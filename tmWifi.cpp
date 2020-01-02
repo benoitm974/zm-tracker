@@ -11,6 +11,7 @@ tmWifi::tmWifi() {
 
 void tmWifi::init() {
   ESP_LOGD(TAG, "Wifi init done.");
+  WiFi.mode(WIFI_OFF); //TODO: check how to best optimize wifi power
 }
 
 void tmWifi::homeConnect() {

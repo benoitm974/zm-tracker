@@ -22,18 +22,33 @@ void tmGPS::gpsTest() {
 }
 
 void tmGPS::wifiHome() {
-  ESP_LOGI(TAG, "wifi Home");
-  //TODO: if within range
-  //WIFI_HOME_ON
-  //else
-  //WIFI_HOME_OFF
-  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-  xTaskNotifyFromISR(TaskWifiHomeHandler, WIFI_HOME_ON, eSetBits,
-                     &xHigherPriorityTaskWoken);
+  static uint32_t wifiHomeLastStatus = WIFI_HOME_OFF;
+  uint32_t wifiHomeStatus = WIFI_HOME_OFF;
 
-  if (xHigherPriorityTaskWoken)
-    portYIELD_FROM_ISR();
+  double distanceKm =
+    TinyGPSPlus::distanceBetween(
+      gps.location.lat(),
+      gps.location.lng(),
+      HOME_LAT,
+      HOME_LNG) / 1000.0;
+
+  if (distanceKm < HOME_DISTANCE_THRES) {
+    wifiHomeStatus = WIFI_HOME_ON;
+  }
+
+  if (wifiHomeStatus != wifiHomeLastStatus) {
+    ESP_LOGD(TAG, "Distance (km) to Home: %.3f%Km, wifi change", distanceKm);
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    xTaskNotifyFromISR(TaskWifiHomeHandler, wifiHomeStatus, eSetBits,
+                       &xHigherPriorityTaskWoken);
+
+    if (xHigherPriorityTaskWoken)
+      portYIELD_FROM_ISR();
+
+    wifiHomeLastStatus = wifiHomeStatus;
+  }
 }
 
 void tmGPS::readGPS() {

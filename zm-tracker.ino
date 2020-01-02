@@ -23,19 +23,26 @@ static const char TAG[] = __FILE__;
 #include "power.h"
 #include "tmgps.h"
 #include "tmWifi.h"
+#include "tmLora.h"
+#include "tmBT.h"
 
 TaskHandle_t taskISRHandler = NULL;
 TaskHandle_t taskGPSHandler = NULL;
 TaskHandle_t TaskWifiHomeHandler = NULL;
+TaskHandle_t TaskLoraHandler = NULL;
+TaskHandle_t TaskBTHandler = NULL;
 
 Power pwr; //Main Power instance for PMU
 tmGPS gps; //main GPS init
 tmWifi wifi; //Wifi management
+tmLora lora;
+tmBT BT;
 
 // the setup function runs once when you press reset or power the board
 void setup() {
   // initialize serial communication at 115200 bits per second:
-  //Serial.begin(115200);
+  /*Serial.begin(115200);
+  Serial.println(F("TM tracker"));*/
 
   ESP_LOGD(TAG, "Main start");
 
@@ -46,13 +53,18 @@ void setup() {
 
   wifi.init();
 
+  lora.init();
+  lora.loraSend(); //TODO: à planifier
+
+  BT.init();
+
   // Now set up two tasks to run independently.
   xTaskCreatePinnedToCore(
     taskISR
     ,  "taskISR"   // A name just for humans
     ,  2048  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
-    ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  &taskISRHandler
     ,  CPU_CORE_1);
 
@@ -63,7 +75,7 @@ void setup() {
     ,  NULL
     ,  1  // Priority
     ,  &taskGPSHandler
-    ,  CPU_CORE_0);
+    ,  CPU_CORE_1);
 
   xTaskCreatePinnedToCore(
     TaskWifiHome
@@ -73,6 +85,24 @@ void setup() {
     ,  1  // Priority
     ,  &TaskWifiHomeHandler
     ,  CPU_CORE_1);
+
+  xTaskCreatePinnedToCore(
+    TaskLora
+    ,  "TaskLora"
+    ,  2048  // Stack size
+    ,  NULL
+    ,  1  // Priority
+    ,  &TaskLoraHandler
+    ,  CPU_CORE_0);
+
+    xTaskCreatePinnedToCore(
+    TaskBT
+    ,  "TaskBT"
+    ,  3072  // Stack size
+    ,  NULL
+    ,  1  // Priority
+    ,  &TaskBTHandler
+    ,  CPU_CORE_0);
 
   // Now the task scheduler, which takes over control of scheduling individual tasks, is automatically started.
 }
@@ -116,20 +146,15 @@ void TaskGpsRead(void *pvParameters)  // This is a task.
   (void) pvParameters;
   static uint32_t lastStack = ULONG_MAX;
 
-  static bool tmp = true;
-
   for (;;)
   {
     gps.readGPS();
-    delay(2);
-    //TODO: if (gps.isFixed()) {
-    //Activate WIFI if home
+    delay(4);
+    if (gps.isFixed()) {
 
-    if (tmp) {
+      //detect if home and connect
       gps.wifiHome();
-      tmp = false;
     }
-    //TODO:}
 
     int tmpStack = uxTaskGetStackHighWaterMark(NULL);
     if (tmpStack < lastStack) {
@@ -163,6 +188,44 @@ void TaskWifiHome(void *pvParameters)  // This is a task.
       wifi.homeDisconnect();
       WifiStatus &= ~WIFI_HOME_OFF;
     }
+
+    int tmpStack = uxTaskGetStackHighWaterMark(NULL);
+    if (tmpStack < lastStack) {
+      lastStack = tmpStack;
+      ESP_LOGD(TAG, "stack left: %d", tmpStack);
+    }
+  }
+}
+
+void TaskLora(void *pvParameters)  // This is a task.
+{
+  (void) pvParameters;
+  static uint32_t lastStack = ULONG_MAX;
+
+  for (;;)
+  {
+    os_runloop_once();
+    delay(2);
+
+    int tmpStack = uxTaskGetStackHighWaterMark(NULL);
+    if (tmpStack < lastStack) {
+      lastStack = tmpStack;
+      ESP_LOGD(TAG, "stack left: %d", tmpStack);
+    }
+  }
+}
+
+void TaskBT(void *pvParameters)  // This is a task.
+{
+  (void) pvParameters;
+  static uint32_t lastStack = ULONG_MAX;
+
+  BT.connect();
+  
+  for (;;)
+  {
+    BT.keepAlive();
+    vTaskDelay( BT_KEEP_ALIVE_INTERVAL / portTICK_PERIOD_MS );
 
     int tmpStack = uxTaskGetStackHighWaterMark(NULL);
     if (tmpStack < lastStack) {
