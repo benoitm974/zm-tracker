@@ -1,5 +1,3 @@
-#include "globals.h"
-#include "arduino.h"
 #include "tmgps.h"
 
 static const char TAG[] = __FILE__;

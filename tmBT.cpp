@@ -1,4 +1,3 @@
-#include "globals.h"
 #include "tmBT.h"
 
 static const char TAG[] = __FILE__;

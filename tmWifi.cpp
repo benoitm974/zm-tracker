@@ -15,6 +15,7 @@ void tmWifi::init() {
 }
 
 void tmWifi::homeConnect() {
+  ESP_LOGI(TAG, "request connect Wifi Home");
   WiFi.mode(WIFI_STA);
   WiFiMulti.addAP(HOME_SSID, HOME_SSID_WPA);
   // wait for WiFi connection

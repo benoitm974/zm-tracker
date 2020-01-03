@@ -42,21 +42,21 @@ tmBT BT;
 void setup() {
   // initialize serial communication at 115200 bits per second:
   /*Serial.begin(115200);
-  Serial.println(F("TM tracker"));*/
+    Serial.println(F("TM tracker"));*/
 
   ESP_LOGD(TAG, "Main start");
 
   pwr.init();
   pwr.powerTest();
 
-  gps.init();
+  BT.init();
 
-  wifi.init();
+  gps.init();
 
   lora.init();
   lora.loraSend(); //TODO: à planifier
 
-  BT.init();
+  wifi.init();
 
   // Now set up two tasks to run independently.
   xTaskCreatePinnedToCore(
@@ -64,7 +64,7 @@ void setup() {
     ,  "taskISR"   // A name just for humans
     ,  2048  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
-    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+    ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  &taskISRHandler
     ,  CPU_CORE_1);
 
@@ -89,13 +89,13 @@ void setup() {
   xTaskCreatePinnedToCore(
     TaskLora
     ,  "TaskLora"
-    ,  2048  // Stack size
+    ,  4096  // Stack size
     ,  NULL
     ,  1  // Priority
     ,  &TaskLoraHandler
     ,  CPU_CORE_0);
 
-    xTaskCreatePinnedToCore(
+  xTaskCreatePinnedToCore(
     TaskBT
     ,  "TaskBT"
     ,  3072  // Stack size
@@ -205,7 +205,7 @@ void TaskLora(void *pvParameters)  // This is a task.
   for (;;)
   {
     os_runloop_once();
-    delay(2);
+    delay(4);
 
     int tmpStack = uxTaskGetStackHighWaterMark(NULL);
     if (tmpStack < lastStack) {
@@ -221,7 +221,7 @@ void TaskBT(void *pvParameters)  // This is a task.
   static uint32_t lastStack = ULONG_MAX;
 
   BT.connect();
-  
+
   for (;;)
   {
     BT.keepAlive();

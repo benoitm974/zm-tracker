@@ -165,32 +165,32 @@ void tmLora::do_send(osjob_t* j) {
   }
   else
   {
-    /*TODO: if (gps.checkGpsFix())
-      {*/
-    // Prepare upstream data transmission at the next possible time.
-    //TODO: gps.buildPacket(txBuffer);
-    LMIC_setTxData2(1, txBuffer, sizeof(txBuffer), 0);
-    ESP_LOGI(TAG, "Packet queued");
-    /* TODO: }
-      else
-      {
+    /*if (gps.checkGpsFix())
+    {*/
+      // Prepare upstream data transmission at the next possible time.
+      //TODO: gps.buildPacket(txBuffer);
+      LMIC_setTxData2(1, txBuffer, sizeof(txBuffer), 0);
+      ESP_LOGI(TAG, "Packet queued");
+    /*}
+    else
+    {
       //try again in 3 seconds
       os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(3), do_send);
-      }*/
+    }*/
   }
   // Next TX is scheduled after TX_COMPLETE event.
 }
 
 void tmLora::init() {
-
+  ESP_LOGD(TAG, "Lora init start.");
   // LMIC init
-  os_init();
+  os_init();ESP_LOGD(TAG, "Lora init 1");
   // Reset the MAC state. Session and pending data transfers will be discarded.
-  LMIC_reset();
+  LMIC_reset();ESP_LOGD(TAG, "Lora init 2");
 
 
 #ifdef USE_OTAA
-  esp_reset_reason_t reason = esp_reset_reason();
+  esp_reset_reason_t reason = esp_reset_reason();ESP_LOGD(TAG, "Lora init 3");
   if ((reason == ESP_RST_DEEPSLEEP) || (reason == ESP_RST_SW))
   {
     LMIC_setSession(0x1, otaaDevAddr, otaaNetwKey, otaaApRtKey);
@@ -206,7 +206,7 @@ void tmLora::init() {
 #endif
 
   // This must be done AFTER calling LMIC_setSession !
-  setOrRestorePersistentCounters();
+  setOrRestorePersistentCounters();ESP_LOGD(TAG, "Lora init 4");
 
 #ifdef CFG_eu868
   LMIC_setupChannel(0, 868100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
@@ -229,9 +229,10 @@ void tmLora::init() {
       LMIC_disableChannel(i);
   }
 #endif
-
+ESP_LOGD(TAG, "Lora init 5");
   // Set data rate and transmit power for uplink (note: txpow seems to be ignored by the library)
   LMIC_setDrTxpow(DR_SF7, 14);
+  ESP_LOGD(TAG, "Lora init done.");
 }
 
 void tmLora::loraSend() {

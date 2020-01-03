@@ -6,7 +6,6 @@
 #pragma once
 
 #include "arduino.h"
-
 #include "secrets.h"
 
 #define CPU_CORE_0 0
